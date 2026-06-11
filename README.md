@@ -10,6 +10,7 @@ This fork keeps the Ralph workflow and adds:
 - OpenCode support in `ralph.sh`
 - a unified installer for Codex, OpenCode, Amp, and Claude Code
 - globally installable `prd` and `ralph` skills
+- live monitoring: per-iteration log streaming, post-iteration git status diff, and a `scripts/watch-ralph.sh` dashboard
 
 ## Supported tools
 
@@ -50,6 +51,12 @@ Then run Ralph:
 ```bash
 cd /path/to/your-project/scripts/ralph
 ./ralph.sh --tool codex 10
+```
+
+Watch progress live from a second terminal:
+
+```bash
+./scripts/watch-ralph.sh --follow
 ```
 
 ## Installation
@@ -115,6 +122,7 @@ Ralph will:
 | `install-codex.sh` | Compatibility wrapper for Codex installs |
 | `install-opencode.sh` | Compatibility wrapper for OpenCode installs |
 | `prd.json.example` | Example Ralph task file |
+| `scripts/watch-ralph.sh` | Live monitoring dashboard for the current Ralph run |
 
 ## Codex notes
 
@@ -133,6 +141,17 @@ Ralph will:
 - The default OpenCode model is `codexzh/gpt-5.4`
 - The default OpenCode agent is `build`
 - Completion is detected by matching `<promise>COMPLETE</promise>`
+
+## Live monitoring
+
+Ralph now streams each iteration's output to both the terminal and a per-iteration log, prints the post-iteration `git status` diff when the worktree changes, and ships a `scripts/watch-ralph.sh` dashboard:
+
+```bash
+./scripts/watch-ralph.sh           # one-shot snapshot
+./scripts/watch-ralph.sh --follow  # refresh every 5 seconds
+```
+
+The dashboard shows the current branch, unpushed commits, run status, current story, overall PRD progress, recent commits, and the tail of the latest Ralph output. When using Claude Code, `CLAUDE.md` also requires the agent to print structured log markers such as `STORY`, `PLAN`, `EDITING`, `TEST`, and `GIT` so progress is readable from the live stream.
 
 ## Why Ralph works
 

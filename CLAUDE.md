@@ -15,6 +15,25 @@ You are an autonomous coding agent working on a software project.
 9. Update the completed story in `prd.json` to `passes: true`.
 10. Append progress to `progress.txt`.
 
+## Live Logging Requirements
+
+Print concise progress logs to stdout throughout the iteration so external watchers can follow your work in real time.
+
+You MUST print these milestones as you go:
+- `STORY: <id> <title>` immediately after selecting the story
+- `PLAN: <1-2 sentence approach>` before editing
+- `FILES: <comma-separated paths>` after you know which files you will touch
+- `EDITING: <path>` each time you start modifying a file
+- `TEST: <exact command>` before each verification command
+- `TEST RESULT: PASS - <summary>` or `TEST RESULT: FAIL - <summary>` after each verification command
+- `GIT: committing feat` before the feature commit
+- `GIT: pushing feat` before pushing the feature commit
+- `GIT: committing chore` before the progress commit
+- `GIT: pushing chore` before pushing the progress commit
+- `DIFF: <short git diff --stat style summary>` before your final written summary
+
+Do not print chain-of-thought or private reasoning. Keep each log line short and factual.
+
 ## Stop Condition
 
 If all stories are complete, reply with:

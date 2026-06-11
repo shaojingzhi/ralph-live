@@ -204,15 +204,26 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   echo "==============================================================="
 
   OUTPUT=""
+  ITERATION_LOG=$(mktemp)
+  DIFF_BEFORE=$(mktemp)
+  DIFF_AFTER=$(mktemp)
+  git -C "$PROJECT_DIR" status --short > "$DIFF_BEFORE" 2>/dev/null || true
 
   if [[ "$TOOL" == "amp" ]]; then
-    OUTPUT="$(run_amp)" || true
+    OUTPUT="$(run_amp | tee "$ITERATION_LOG")" || true
   elif [[ "$TOOL" == "claude" ]]; then
-    OUTPUT="$(run_claude)" || true
+    OUTPUT="$(run_claude | tee "$ITERATION_LOG")" || true
   elif [[ "$TOOL" == "codex" ]]; then
-    OUTPUT="$(run_codex)" || true
+    OUTPUT="$(run_codex | tee "$ITERATION_LOG")" || true
   else
-    OUTPUT="$(run_opencode)" || true
+    OUTPUT="$(run_opencode | tee "$ITERATION_LOG")" || true
+  fi
+
+  git -C "$PROJECT_DIR" status --short > "$DIFF_AFTER" 2>/dev/null || true
+  if ! cmp -s "$DIFF_BEFORE" "$DIFF_AFTER"; then
+    echo ""
+    echo "[ralph] git status changed during iteration $i:"
+    cat "$DIFF_AFTER"
   fi
 
   COMPLETION_SOURCE="$OUTPUT"
@@ -220,12 +231,15 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     COMPLETION_SOURCE="$(extract_opencode_text "$OUTPUT")"
   fi
 
-  if printf '%s' "$COMPLETION_SOURCE" | grep -q "<promise>COMPLETE</promise>"; then
+  if grep -q "<promise>COMPLETE</promise>" "$ITERATION_LOG" || printf '%s' "$COMPLETION_SOURCE" | grep -q "<promise>COMPLETE</promise>"; then
     echo ""
     echo "Ralph completed all tasks!"
     echo "Completed at iteration $i of $MAX_ITERATIONS"
+    rm -f "$ITERATION_LOG" "$DIFF_BEFORE" "$DIFF_AFTER"
     exit 0
   fi
+
+  rm -f "$ITERATION_LOG" "$DIFF_BEFORE" "$DIFF_AFTER"
 
   echo "Iteration $i complete. Continuing..."
   sleep 2

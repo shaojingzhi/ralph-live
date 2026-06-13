@@ -10,6 +10,7 @@ Ralph 是一个自动化 AI agent 循环，会反复启动 AI 编码工具，直
 - `ralph.sh` 中的 OpenCode 支持
 - 面向 Codex、OpenCode、Amp、Claude Code 的统一安装器
 - 可全局安装的 `prd` 与 `ralph` skills
+- 实时监控：每轮输出实时落盘、迭代后 git status diff 提示，以及 `scripts/watch-ralph.sh` 监控面板
 
 ## 支持的工具
 
@@ -50,6 +51,12 @@ Use the ralph skill to convert tasks/prd-task-priorities.md to scripts/ralph/prd
 ```bash
 cd /path/to/your-project/scripts/ralph
 ./ralph.sh --tool codex 10
+```
+
+在另一个终端实时查看进度：
+
+```bash
+./scripts/watch-ralph.sh --follow
 ```
 
 ## 安装
@@ -115,6 +122,7 @@ Ralph 会：
 | `install-codex.sh` | Codex 兼容安装入口 |
 | `install-opencode.sh` | OpenCode 兼容安装入口 |
 | `prd.json.example` | Ralph 任务文件示例 |
+| `scripts/watch-ralph.sh` | 当前 Ralph 任务的实时监控面板 |
 
 ## Codex 说明
 
@@ -133,6 +141,17 @@ Ralph 会：
 - 默认 OpenCode 模型为 `codexzh/gpt-5.4`
 - 默认 OpenCode agent 为 `build`
 - 完成判定通过匹配 `<promise>COMPLETE</promise>`
+
+## 实时监控
+
+Ralph 现在会把每一轮输出同时流式写入终端和单轮日志文件，并在工作树发生变化时打印迭代后的 `git status` diff，同时附带 `scripts/watch-ralph.sh` 监控面板：
+
+```bash
+./scripts/watch-ralph.sh           # 拍一次快照
+./scripts/watch-ralph.sh --follow  # 每 5 秒刷新一次
+```
+
+面板会显示当前分支、未推送提交数、运行状态、当前 story、整体 PRD 进度、最近提交，以及最新 Ralph 输出的尾部内容。配合 Claude Code 时，`CLAUDE.md` 还会要求 agent 打印 `STORY`、`PLAN`、`EDITING`、`TEST`、`GIT` 等结构化日志标记，方便从实时流中跟踪进展。
 
 ## 为什么 Ralph 有效
 

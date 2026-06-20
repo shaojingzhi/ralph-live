@@ -198,8 +198,42 @@ extract_codex_text() {
   ' "$1"
 }
 
+extract_nonassistant_log() {
+  awk '
+    /^assistant$/ { exit }
+    { print }
+  ' "$1"
+}
+
 iteration_has_auth_error() {
-  grep -Eiq '401 Unauthorized|authentication required|无效的令牌|Unauthorized' "$1"
+  local log_file="$1"
+  local tool_name="$2"
+  local tool_exit_code="$3"
+  local nonassistant_log
+
+  nonassistant_log="$(extract_nonassistant_log "$log_file")"
+
+  if [[ "$tool_exit_code" -eq 0 ]]; then
+    return 1
+  fi
+
+  if [[ "$tool_name" == "codex" || "$tool_name" == "opencode" ]]; then
+    printf '%s
+' "$nonassistant_log" | grep -Eiq '401 Unauthorized|authentication required|invalid_api_key|API key[[:space:]]+invalid|令牌已过期|无效的令牌|provider authentication failed'
+    return $?
+  fi
+
+  if [[ "$tool_name" == "claude" ]]; then
+    printf '%s
+' "$nonassistant_log" | grep -Eiq 'invalid x-api-key|authentication required|please login|unauthorized'
+    return $?
+  fi
+
+  return 1
+}
+
+iteration_has_git_permission_error() {
+  grep -Eiq 'cannot lock ref|\.git/index\.lock|Operation not permitted|Permission denied|read-only file system' "$1"
 }
 
 archive_previous_run
@@ -218,17 +252,24 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   ITERATION_LOG=$(mktemp)
   DIFF_BEFORE=$(mktemp)
   DIFF_AFTER=$(mktemp)
+  ITERATION_EXIT_CODE=0
   git -C "$PROJECT_DIR" status --short > "$DIFF_BEFORE" 2>/dev/null || true
 
+  set +e
   if [[ "$TOOL" == "amp" ]]; then
-    OUTPUT="$(run_amp | tee "$ITERATION_LOG")" || true
+    OUTPUT="$(run_amp | tee "$ITERATION_LOG")"
+    ITERATION_EXIT_CODE=$?
   elif [[ "$TOOL" == "claude" ]]; then
-    OUTPUT="$(run_claude | tee "$ITERATION_LOG")" || true
+    OUTPUT="$(run_claude | tee "$ITERATION_LOG")"
+    ITERATION_EXIT_CODE=$?
   elif [[ "$TOOL" == "codex" ]]; then
-    OUTPUT="$(run_codex | tee "$ITERATION_LOG")" || true
+    OUTPUT="$(run_codex | tee "$ITERATION_LOG")"
+    ITERATION_EXIT_CODE=$?
   else
-    OUTPUT="$(run_opencode | tee "$ITERATION_LOG")" || true
+    OUTPUT="$(run_opencode | tee "$ITERATION_LOG")"
+    ITERATION_EXIT_CODE=$?
   fi
+  set -e
 
   git -C "$PROJECT_DIR" status --short > "$DIFF_AFTER" 2>/dev/null || true
   if ! cmp -s "$DIFF_BEFORE" "$DIFF_AFTER"; then
@@ -244,10 +285,18 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     COMPLETION_SOURCE="$(extract_codex_text "$ITERATION_LOG")"
   fi
 
-  if iteration_has_auth_error "$ITERATION_LOG"; then
+  if iteration_has_auth_error "$ITERATION_LOG" "$TOOL" "$ITERATION_EXIT_CODE"; then
     echo ""
     echo "Ralph stopped: tool authentication failed."
     echo "Check your provider token / API credentials, then retry."
+    rm -f "$ITERATION_LOG" "$DIFF_BEFORE" "$DIFF_AFTER"
+    exit 1
+  fi
+
+  if iteration_has_git_permission_error "$ITERATION_LOG"; then
+    echo ""
+    echo "Ralph stopped: repository write permission failed."
+    echo "Nested tool execution could not write git metadata under .git."
     rm -f "$ITERATION_LOG" "$DIFF_BEFORE" "$DIFF_AFTER"
     exit 1
   fi

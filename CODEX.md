@@ -21,6 +21,13 @@ You are Codex running one autonomous Ralph iteration on a software project.
 8. Update `prd.json` to set that story's `passes` field to `true` only after checks pass.
 9. Append progress to `progress.txt`.
 10. Commit all changes with message `feat: [Story ID] - [Story Title]`.
+11. If more stories still have `passes: false`, continue to the next Ralph iteration automatically unless blocked by a real decision, missing credentials, missing permissions, or an unsafe/ambiguous repo state.
+
+## Autonomy Default
+
+- Do not stop after each completed story just to ask whether to continue.
+- Default behavior is to keep going story-by-story until all remaining `passes: false` stories are done or the configured iteration budget is exhausted.
+- Ask the user only when a choice has non-obvious consequences or the task is blocked externally.
 
 ## Progress Report Format
 
@@ -85,3 +92,4 @@ Otherwise end normally so the next iteration can continue.
 - Work on one story per iteration.
 - Read `progress.txt` before making changes.
 - Prefer concise progress notes with durable learnings.
+- If the Codex run fails because of provider authentication or API authorization, treat that as a hard stop for the iteration rather than as successful completion.

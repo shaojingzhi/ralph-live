@@ -191,6 +191,17 @@ extract_opencode_text() {
   printf '%s\n' "$1" | jq -r 'select(.type == "text") | .part.text' 2>/dev/null || true
 }
 
+extract_codex_text() {
+  awk '
+    /^assistant$/ { capture=1; next }
+    capture { print }
+  ' "$1"
+}
+
+iteration_has_auth_error() {
+  grep -Eiq '401 Unauthorized|authentication required|无效的令牌|Unauthorized' "$1"
+}
+
 archive_previous_run
 track_current_branch
 ensure_progress_file
@@ -229,9 +240,19 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   COMPLETION_SOURCE="$OUTPUT"
   if [[ "$TOOL" == "opencode" ]]; then
     COMPLETION_SOURCE="$(extract_opencode_text "$OUTPUT")"
+  elif [[ "$TOOL" == "codex" ]]; then
+    COMPLETION_SOURCE="$(extract_codex_text "$ITERATION_LOG")"
   fi
 
-  if grep -q "<promise>COMPLETE</promise>" "$ITERATION_LOG" || printf '%s' "$COMPLETION_SOURCE" | grep -q "<promise>COMPLETE</promise>"; then
+  if iteration_has_auth_error "$ITERATION_LOG"; then
+    echo ""
+    echo "Ralph stopped: tool authentication failed."
+    echo "Check your provider token / API credentials, then retry."
+    rm -f "$ITERATION_LOG" "$DIFF_BEFORE" "$DIFF_AFTER"
+    exit 1
+  fi
+
+  if printf '%s' "$COMPLETION_SOURCE" | grep -q "<promise>COMPLETE</promise>"; then
     echo ""
     echo "Ralph completed all tasks!"
     echo "Completed at iteration $i of $MAX_ITERATIONS"

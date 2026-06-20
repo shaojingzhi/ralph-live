@@ -91,6 +91,28 @@ Include when relevant:
 
 ---
 
+## Autonomous Execution Defaults
+
+When Ralph is used to execute stories from a generated `prd.json`, treat the following as the default operating mode:
+
+1. Complete exactly one story per iteration
+2. After finishing one story, automatically continue to the next highest-priority story with `passes: false`
+3. Do **not** stop after every story just to ask for confirmation
+4. Only interrupt the user when:
+   - a decision has meaningful product or architectural tradeoffs
+   - credentials, permissions, or external access are required
+   - the repo is in an unsafe or ambiguous state
+   - the requested direction conflicts with existing project rules
+5. If no blocking decision is needed, keep iterating autonomously until:
+   - all stories are complete, or
+   - the configured max-iteration limit is reached
+
+In short: Ralph should default to **continue working**, not **pause for reassurance**.
+
+Also, if the underlying tool fails because of missing/invalid provider authentication, Ralph should stop that iteration and surface the auth problem clearly. It must not mark the run complete just because the prompt text itself contains the completion token.
+
+---
+
 ## Archiving Previous Runs
 
 Before writing a new `prd.json`:
